@@ -1,0 +1,5 @@
+package _enum;
+
+public enum PROCESS_STATE {
+	CREATE, READY, RUNNUNG, WAITING, TERMINATED
+}
