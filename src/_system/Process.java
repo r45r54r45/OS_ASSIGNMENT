@@ -2,26 +2,26 @@ package _system;
 
 import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.LinkedList;
-
-import com.sun.xml.internal.bind.v2.schemagen.xmlschema.List;
-
 import _enum.OP_CODE;
 import _enum.PROCESS_STATE;
 
 public class Process {
 	public int pid;
+	public int allocation_id;
 	public int program_counter=0;
 	public PROCESS_STATE process_state;
 	public PageTableCell[] page_table;
+	public String name;
 	public int time_quantum;
 	public int sleep_cycle;
 	public CodeBlock[] image;
-	public Process(int pid){
+	public Process(int pid,String name){
 		this.pid=pid;
+		this.name=name;
+		this.allocation_id=0;
 		process_state=PROCESS_STATE.CREATE; //프로세스 상태를 변경 
 		page_table=new PageTableCell[Kernel.virtual_momory_size/Kernel.page_size];
-		time_quantum=0;
+		time_quantum=5;
 		sleep_cycle=-1;
 	}
 	public void setImage(CodeBlock[] image){
@@ -32,7 +32,7 @@ public class Process {
 		if(time_quantum==0)return true;
 		else return false;
 	}
-	public void operate(){
+	public boolean operate(){
 		program_counter++; //1st code is finished in program_counter 1 
 		CodeBlock block=image[program_counter-1];
 		RR_Scheduler rr=RR_Scheduler.getInstance();
@@ -57,6 +57,11 @@ public class Process {
 			//spend 1 cycle
 			break;
 		}
+		//check if process is ended
+		if(program_counter==image.length)
+			return false;
+		else 
+			return true;
 	}
 	
 	private void allocateOperation(int reqPage){ //manage pageTable
@@ -66,12 +71,14 @@ public class Process {
 				if(page_table[i+j]!=null)isEmpty=false;
 			}
 			if(isEmpty){
+				System.out.println("empty page table space found: from "+i);
 				//has index i which is the start of target pages
 				BuddySystem bs=BuddySystem.getInstance();
 				//retrieve allocation id from buddysystem
-				int new_alloc_id=bs.allocate(this.pid,reqPage);
+				bs.allocate(this.pid,this.allocation_id++,reqPage);
 				for(int start=i; start<i+reqPage; start++){
-					page_table[start]=new PageTableCell(new_alloc_id);
+					page_table[start]=new PageTableCell(this.allocation_id);
+					System.out.println("Process: "+pid+", pageTable start: "+start+", req: "+reqPage);
 				}
 			}
 		}
@@ -87,14 +94,14 @@ public class Process {
 		//release in buddySystem if it is valid
 		if(valid){
 			BuddySystem bs=BuddySystem.getInstance();
-			bs.release(alloc_id);
+			bs.release(this.pid,alloc_id);
 		}
 	}
 	private void memoryAccess(int alloc_id){
 		BuddySystem bs=BuddySystem.getInstance();
 		if(isValid(alloc_id)){
 			//valid
-			bs.access(alloc_id);
+			bs.access(this.pid,alloc_id);
 		}else{
 			//invalid
 			generatePageFault();
@@ -102,7 +109,7 @@ public class Process {
 			bs.allocate(pid, findPageWithAllocId(alloc_id).size(), alloc_id); 
 			//find how many pages to be reallocate and reallocate
 			//LRU should be refreshed
-			bs.access(alloc_id);
+			bs.access(pid,alloc_id);
 		}
 	}
 	private void generatePageFault(){
@@ -110,6 +117,7 @@ public class Process {
 	}
 	private boolean isValid(int alloc_id){
 		//may generate error if that allocation id is not in pagetable
+		System.out.println("check pagetable of pid "+pid+", alloc_id: "+alloc_id);
 		if(page_table[findPageWithAllocId(alloc_id).get(0)].valid_bit==true) 
 			return true;
 		else return false;
@@ -126,8 +134,8 @@ public class Process {
 		return result;
 	}
 	class CodeBlock{
-		private OP_CODE opcode; //opCode, 명령어 
-		private int data; //argument
+		public OP_CODE opcode; //opCode, 명령어 
+		public int data; //argument
 		public CodeBlock(OP_CODE i, int d){
 			opcode=i;
 			data=d;

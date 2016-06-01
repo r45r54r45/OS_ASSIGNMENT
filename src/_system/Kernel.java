@@ -53,13 +53,10 @@ public class Kernel {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		for(ExecuteBlock i : code){
-			System.out.println(i.cycle);
-			System.out.println(i.process);
-		}
 	}
 	
 	public void doKernelOperation(int current_cycle,RR_Scheduler rr){
+		System.out.println("kernel cycle: "+current_cycle);
 		for(int i=0; i<code.length; i++){
 			if(code[i].cycle==current_cycle){
 				if(code[i].type==KERNEL_CODE.IO){

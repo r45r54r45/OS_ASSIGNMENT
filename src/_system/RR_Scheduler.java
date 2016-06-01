@@ -37,7 +37,7 @@ public class RR_Scheduler {
 
 	public void initProcess(int cpuCycle, String codeFile) {
 		// initiate process
-		Process process=new Process(Kernel.current_pid++);
+		Process process=new Process(Kernel.current_pid++,codeFile);
 		process.process_state=PROCESS_STATE.CREATE;
 		try {
 			fr = new FileReader(codeFile);
@@ -61,6 +61,7 @@ public class RR_Scheduler {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+		queue.offer(process);
 		
 	}
 	
@@ -81,7 +82,7 @@ public class RR_Scheduler {
 			}
 		}
 		//이번이 사이클 부여 주기인지 확인 
-		if(current_cycle%10==0){
+		if(current_cycle%jugi==0){
 			Iterator<Process> it2=queue.iterator();
 			while(it2.hasNext()){
 				Process seeked=it.next();
@@ -125,8 +126,15 @@ public class RR_Scheduler {
 			return true; //tq is remaining
 		}
 	}
-	public Process scheduleProcess() {
-		return queue.poll();
+	public Process scheduleProcess(int cycle) {
+		Process process=queue.poll();
+		if(process!=null){
+			//if there is sth came out of the queue
+			System.out.println(cycle+"   "+process.pid+"   "+process.name);
+			return process;
+		}
+		return null;
+		
 	}
 
 	public void enterLast(Process process) {
