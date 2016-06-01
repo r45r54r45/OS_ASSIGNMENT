@@ -26,12 +26,12 @@ public class CPU {
 		kernel.doKernelOperation(cycle, rr);
 		//5. if not current process, use scheduler to get one
 		if(current_process==null){
-			current_process=rr.select();
+			current_process=rr.scheduleProcess();
 		}
 		//6. system.txt output
 		kernel.systemOutput();
 		//7. do process operation
 		current_process.operate();
-		rr.checkTQ(current_process); //check if this process has used all of its tq
+		if(rr.checkTQ(current_process))current_process=null; //check if this process has used all of its tq
 	}
 }

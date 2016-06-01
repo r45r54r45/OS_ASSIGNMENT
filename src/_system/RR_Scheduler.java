@@ -16,7 +16,8 @@ import _main.CPU;
 public class RR_Scheduler {
 	private static RR_Scheduler instance;
 	Queue<Process> queue;
-	
+	Queue<Process> sleep_list;
+	Queue<Process> io_list;
 	FileReader fr;
 	BufferedReader br;
 	private int jugi;
@@ -25,6 +26,8 @@ public class RR_Scheduler {
 		queue = new LinkedList<Process>();
 		jugi=Kernel.jugi_for_cycle;
 		cycle=Kernel.cycle_count;
+		sleep_list=new LinkedList<Process>();
+		io_list=new LinkedList<Process>();
 	}
 	public static RR_Scheduler getInstance(){
 		if ( instance == null )
@@ -86,38 +89,54 @@ public class RR_Scheduler {
 			}
 		}
 	}
-	
+	public void sleepInit(int pid, int sleepingTime){
+		//init sleeping procedure of process
+		Process process=findProcessByPid(pid);
+		queue.remove(process);
+		process.sleep_cycle=sleepingTime;
+		process.process_state=PROCESS_STATE.SLEEPING;
+		sleep_list.offer(process);
+	}
+	public void ioInit(int pid){
+		Process process=findProcessByPid(pid);
+		queue.remove(process);
+		process.process_state=PROCESS_STATE.WAITING;
+		io_list.offer(process);
+	}
 	public void checkSleepProcess(){
-		//check sleeping process //if sleep is ended insert that process into queue
-		Iterator<Process> it=queue.iterator();
-		while(it.hasNext()){
-			Process seeked=it.next();
-			if(seeked.sleep_cycle==1){ 
+		//check sleeping process //if sleep is ended insert that process into queue	
+		Iterator<Process> sleeping=sleep_list.iterator();
+		while(sleeping.hasNext()){
+			Process seeked=sleeping.next();
+			if(seeked.sleep_cycle==1){ //check if sleep is ended
 				//since sleep cycle will be -1 in this cycle, check if it is 1 
 				seeked.sleep_cycle=-1;
-				queue.remove(seeked); //delete it from queue
+				sleep_list.remove(seeked); //delete it from sleeping list
 				enterLast(seeked); //put it in the queue
 			}
 		}
 	}
-	public void checkTQ(Process process){
+	public boolean checkTQ(Process process){
 		process.time_quantum--;
-		if(process.isTQEnd())enterLast(process);
+		if(process.isTQEnd()){
+			enterLast(process);
+			return false; //tq over
+		}else{
+			return true; //tq is remaining
+		}
 	}
-	public Process select() {
-		//sleeping 인 프로세스는 제외해야함.
-		return null;
+	public Process scheduleProcess() {
+		return queue.poll();
 	}
 
 	public void enterLast(Process process) {
 		process.process_state=PROCESS_STATE.READY;
-		queue.add(process);
+		queue.offer(process);
 	}
 	public void ioWaitComplete(int pid) {
 		Process process=findProcessByPid(pid);
-		queue.remove(process);
-		process.process_state=PROCESS_STATE.READY;
-		queue.add(process);
+		io_list.remove(process);
+		enterLast(process);
 	}
 	public Process findProcessByPid(int pid){
 		Iterator<Process> it=queue.iterator();
