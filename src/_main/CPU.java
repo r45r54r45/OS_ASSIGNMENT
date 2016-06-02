@@ -36,15 +36,16 @@ public class CPU {
 			if(current_process!=null){
 				if(!current_process.operate()){
 					//if false, increase kernel's end process count
-					System.out.println("process ended in CPU");
+					System.out.println("[[CPU]] process "+current_process.pid+" ended");
 					finished_process++;
 				}
 				if(!rr.checkTQ(current_process)){
 					System.out.println("[[CPU]] process tq finish: "+current_process.pid+", CPU cycle: "+cycle);
+					rr.tqFinishRequeue(current_process);
 					current_process=null;
 				}
 				//check if this process has used all of its tq
-			}
+			} 
 			cycle++;
 		}
 

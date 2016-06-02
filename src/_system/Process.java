@@ -13,15 +13,16 @@ public class Process {
 	public PageTableCell[] page_table;
 	public String name;
 	public int time_quantum;
+	public int time_resource;
 	public int sleep_cycle;
 	public CodeBlock[] image;
 	public Process(int pid,String name){
 		this.pid=pid;
 		this.name=name;
 		this.allocation_id=0;
+		this.time_resource=0;
 		process_state=PROCESS_STATE.CREATE; //프로세스 상태를 변경 
 		page_table=new PageTableCell[Kernel.virtual_momory_size/Kernel.page_size];
-		time_quantum=5;
 		sleep_cycle=-1;
 	}
 	public void setImage(CodeBlock[] image){

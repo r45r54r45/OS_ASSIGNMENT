@@ -22,6 +22,8 @@ public class RR_Scheduler {
 	BufferedReader br;
 	private int jugi;
 	private int cycle;
+	private static int current_jugi_cycle=0;
+	
 	private RR_Scheduler() {
 		queue = new LinkedList<Process>();
 		jugi=Kernel.jugi_for_cycle;
@@ -39,6 +41,8 @@ public class RR_Scheduler {
 		// initiate process
 		Process process=new Process(Kernel.current_pid++,codeFile);
 		process.process_state=PROCESS_STATE.CREATE;
+		process.time_quantum=Kernel.max_time_quantum;
+		System.out.println("[[PROCESS]] init pid: "+process.pid );
 		try {
 			fr = new FileReader(codeFile);
 			br = new BufferedReader(fr);
@@ -55,6 +59,7 @@ public class RR_Scheduler {
 					continue;
 				}
 				code[lineNumber]=process.new CodeBlock(OP_CODE.values()[Integer.parseInt(st[0])], Integer.parseInt(st[1]));
+				lineNumber++;
 				//codeblock init
 			}
 			process.setImage(code);
@@ -66,6 +71,7 @@ public class RR_Scheduler {
 	}
 	
 	public void distributeCycle(int current_cycle){
+		current_jugi_cycle++;
 		//스케쥴러 안에 있는 프로세스들의 사이클이 모두 0인지 확인 (그러면 바로 부여)
 		Iterator<Process> it=queue.iterator();
 		int checkFlag=0;
@@ -73,22 +79,26 @@ public class RR_Scheduler {
 			Process seeked=it.next();
 			if(seeked.isTQEnd())checkFlag++;
 		}
-		if(checkFlag==queue.size()){
+		if(checkFlag==queue.size()&&queue.size()!=0){
+			current_jugi_cycle=0;
 			//모두 tq 가 0인경우
 			Iterator<Process> it2=queue.iterator();
 			while(it2.hasNext()){
-				Process seeked=it.next();
-				seeked.time_quantum=cycle;
+				Process seeked=it2.next();
+				seeked.time_resource+=cycle;
 			}
 		}
 		//이번이 사이클 부여 주기인지 확인 
-		if(current_cycle%jugi==0){
-			Iterator<Process> it2=queue.iterator();
-			while(it2.hasNext()){
-				Process seeked=it.next();
-				seeked.time_quantum=cycle;
+		if(current_jugi_cycle==jugi){
+			current_jugi_cycle=0;
+			Iterator<Process> it3=queue.iterator();
+			while(it3.hasNext()){
+				Process seeked=it3.next();
+				seeked.time_resource+=cycle;
 			}
 		}
+		
+		
 	}
 	public void sleepInit(int pid, int sleepingTime){
 		//init sleeping procedure of process
@@ -130,11 +140,21 @@ public class RR_Scheduler {
 		Process process=queue.poll();
 		if(process!=null){
 			//if there is sth came out of the queue
+			if(process.time_resource>=Kernel.max_time_quantum){
+				process.time_resource-=Kernel.max_time_quantum;
+				process.time_quantum+=Kernel.max_time_quantum;
+			}else{
+				process.time_quantum=process.time_resource;
+			}
 			System.out.println(cycle+"   "+process.pid+"   "+process.name);
 			return process;
 		}
 		return null;
 		
+	}
+	public void tqFinishRequeue(Process process){
+		System.out.println(cycle+"   "+process.pid+"   "+process.name);
+		queue.offer(process);
 	}
 
 	public void enterLast(Process process) {
